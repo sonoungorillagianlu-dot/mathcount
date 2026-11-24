@@ -15,7 +15,7 @@ const client = new Client({
     ]
 });
 
-// DATI DEL COUNTING
+// DATI COUNTING
 const channels = new Map();
 
 function getData(channelId) {
@@ -30,13 +30,21 @@ function getData(channelId) {
     return channels.get(channelId);
 }
 
+// ESTRAZIONE OPERAZIONE DAL MESSAGGIO
+function extractOperation(content) {
+    const matches = content.match(
+        /[0-9]+(?:\s*[+\-*/%^]\s*[0-9]+)*(?:\s*\/\s*[0-9]+)?/g
+    );
+
+    if (!matches) return null;
+
+    // Prende la prima sequenza numerica trovata
+    return matches[0].trim();
+}
+
 // CALCOLO MATEMATICO
 function calculateOperation(expression) {
-    if (expression.length > 100) {
-        throw new Error('Operation too long');
-    }
-
-    if (!/^[0-9+\-*/().%\s^]+$/.test(expression)) {
+    if (!expression || expression.length > 100) {
         throw new Error('Invalid operation');
     }
 
@@ -53,7 +61,7 @@ function calculateOperation(expression) {
     return result;
 }
 
-// GESTIONE ERRORI COUNTING
+// GESTIONE ERRORI
 async function failCounting(message, data, reason) {
     const previousCount = data.count;
 
@@ -81,22 +89,27 @@ client.once('ready', () => {
 client.on('messageCreate', async (message) => {
 
     if (message.author.bot) return;
-
     if (message.channel.id !== COUNTING_CHANNEL) return;
 
     const data = getData(message.channel.id);
 
+    // ESTRAE IL NUMERO DAL TESTO
+    const expression = extractOperation(message.content);
+
+    // IGNORA MESSAGGI SENZA NUMERI
+    if (!expression) return;
+
     let result;
 
-    // CONTROLLO OPERAZIONE MATEMATICA
+    // CALCOLO
     try {
-        result = calculateOperation(message.content);
+        result = calculateOperation(expression);
     } catch {
         await failCounting(message, data, 'Invalid operation.');
         return;
     }
 
-    // CONTROLLO UTENTE CONSECUTIVO
+    // CONTROLLO UTENTE
     if (message.author.id === data.lastUser) {
         await failCounting(
             message,
@@ -106,20 +119,19 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // CONTROLLO NUMERO CORRETTO
+    // CONTROLLO NUMERO
     if (result !== data.count + 1) {
         await failCounting(message, data, 'Wrong number.');
         return;
     }
 
-    // AGGIORNAMENTO COUNTING
+    // AGGIORNA COUNTING
     data.count = result;
     data.lastUser = message.author.id;
 
     // CONTROLLO RECORD
     if (result > data.record) {
         data.record = result;
-
         await message.react('☑️');
     } else {
         await message.react('✅');
@@ -130,7 +142,7 @@ client.on('messageCreate', async (message) => {
     );
 });
 
-// GESTIONE ERRORI
+// ERRORI BOT
 client.on('error', (error) => {
     console.error('Discord error:', error);
 });
@@ -140,4 +152,4 @@ if (!TOKEN) {
     console.error('ERRORE: DISCORD_TOKEN non configurato!');
 } else {
     client.login(TOKEN);
-    }
+}

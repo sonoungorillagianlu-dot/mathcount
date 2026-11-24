@@ -33,12 +33,11 @@ function getData(channelId) {
 // CALCOLO MATEMATICO
 function calculateOperation(expression) {
     if (expression.length > 100) {
-        throw new Error('Operazione troppo lunga');
+        throw new Error('Operation too long');
     }
 
-    // Accetta esclusivamente numeri e operatori matematici
     if (!/^[0-9+\-*/().%\s^]+$/.test(expression)) {
-        throw new Error('Operazione non valida');
+        throw new Error('Invalid operation');
     }
 
     const result = evaluate(expression);
@@ -48,10 +47,29 @@ function calculateOperation(expression) {
         !Number.isFinite(result) ||
         !Number.isInteger(result)
     ) {
-        throw new Error('Risultato non valido');
+        throw new Error('Invalid result');
     }
 
     return result;
+}
+
+// GESTIONE ERRORI COUNTING
+async function failCounting(message, data, reason) {
+    const previousCount = data.count;
+
+    data.count = 0;
+    data.lastUser = null;
+
+    await message.react('❌');
+
+    await message.channel.send({
+        content:
+            `<@${message.author.id}> RUINED IT AT **${previousCount}**!! ` +
+            `Next number is **1**. **${reason}**`,
+        allowedMentions: {
+            users: [message.author.id]
+        }
+    });
 }
 
 // BOT ONLINE
@@ -70,32 +88,27 @@ client.on('messageCreate', async (message) => {
 
     let result;
 
-    // PROVA A CALCOLARE IL MESSAGGIO
+    // CONTROLLO OPERAZIONE MATEMATICA
     try {
         result = calculateOperation(message.content);
     } catch {
-        data.count = 0;
-        data.lastUser = null;
-
-        await message.react('❌');
+        await failCounting(message, data, 'Invalid operation.');
         return;
     }
 
     // CONTROLLO UTENTE CONSECUTIVO
     if (message.author.id === data.lastUser) {
-        data.count = 0;
-        data.lastUser = null;
-
-        await message.react('❌');
+        await failCounting(
+            message,
+            data,
+            'You cannot count twice in a row.'
+        );
         return;
     }
 
     // CONTROLLO NUMERO CORRETTO
     if (result !== data.count + 1) {
-        data.count = 0;
-        data.lastUser = null;
-
-        await message.react('❌');
+        await failCounting(message, data, 'Wrong number.');
         return;
     }
 
@@ -112,7 +125,14 @@ client.on('messageCreate', async (message) => {
         await message.react('✅');
     }
 
-    console.log(`Counting: ${data.count} | Record: ${data.record}`);
+    console.log(
+        `Counting: ${data.count} | Record: ${data.record}`
+    );
+});
+
+// GESTIONE ERRORI
+client.on('error', (error) => {
+    console.error('Discord error:', error);
 });
 
 // LOGIN
@@ -120,4 +140,4 @@ if (!TOKEN) {
     console.error('ERRORE: DISCORD_TOKEN non configurato!');
 } else {
     client.login(TOKEN);
-}
+    }

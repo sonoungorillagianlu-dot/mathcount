@@ -4,7 +4,7 @@ const { evaluate } = require('mathjs');
 
 // CONFIGURAZIONE
 const TOKEN = process.env.DISCORD_TOKEN;
-const COUNTING_CHANNEL = '1574882363723489440';
+const COUNTING_CHANNEL = '1574882027541495969';
 
 // CREA IL BOT
 const client = new Client({

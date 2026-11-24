@@ -1,0 +1,12 @@
+{
+  "name": "math-counting-bot",
+  "version": "1.0.0",
+  "description": "Bot Discord per il conteggio matematico",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.3"
+  }
+}
